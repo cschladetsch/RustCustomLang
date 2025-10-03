@@ -1,6 +1,7 @@
 use std::fmt;
 use std::io::{self, Write};
 use std::process::Command;
+use std::collections::HashMap;
 
 // Continuation type - represents a suspended computation
 enum Continuation {
@@ -78,6 +79,22 @@ impl Color {
     }
 }
 
+// Language modes
+#[derive(Debug, Clone, PartialEq)]
+enum Language {
+    Pi,   // Postfix/RPN notation
+    Rho,  // Infix with tab indentation
+    Tau,  // Network language with futures
+}
+
+// Future type for Tau language
+#[derive(Debug, Clone)]
+enum FutureState {
+    Pending,
+    Resolved(Box<Value>),
+    Rejected(String),
+}
+
 // Value types in the language
 #[derive(Debug)]
 enum Value {
@@ -88,6 +105,7 @@ enum Value {
     Color(Color),
     Array(Vec<Value>),
     Map(Vec<(Value, Value)>),
+    Future(FutureState),  // For Tau language
     Continuation(Box<Continuation>),
 }
 
@@ -101,6 +119,7 @@ impl Clone for Value {
             Value::Color(c) => Value::Color(*c),
             Value::Array(a) => Value::Array(a.clone()),
             Value::Map(m) => Value::Map(m.clone()),
+            Value::Future(f) => Value::Future(f.clone()),
             Value::Continuation(_) => Value::Unit, // Can't clone closures
         }
     }
@@ -358,22 +377,31 @@ impl Runtime {
     }
 }
 
-// REPL - Read-Eval-Print Loop
+// REPL - Multi-language Read-Eval-Print Loop
+// Supports: Pi (postfix), Rho (infix+tabs), Tau (network+futures)
 struct Repl {
     runtime: Runtime,
+    variables: HashMap<String, Value>,
+    current_lang: Language,
+    indent_level: usize,  // For Rho language
 }
 
 impl Repl {
     fn new() -> Self {
         Repl {
             runtime: Runtime::new(),
+            variables: HashMap::new(),
+            current_lang: Language::Pi,  // Default to Pi (postfix)
+            indent_level: 0,
         }
     }
 
     fn run(&mut self) {
-        println!("RustAiLang REPL v0.1.0");
-        println!("Commands: :quit, :help");
+        println!("Multi-Language REPL v0.2.0");
+        println!("Languages: Pi (postfix), Rho (infix+tabs), Tau (network+futures)");
+        println!("Commands: :quit, :help, :pi, :rho, :tau");
         println!("Use `command` to execute bash commands\n");
+        println!("Current language: {:?}\n", self.current_lang);
 
         loop {
             print!("> ");
@@ -402,6 +430,21 @@ impl Repl {
                         self.print_help();
                         continue;
                     }
+                    ":pi" => {
+                        self.current_lang = Language::Pi;
+                        println!("Switched to Pi (postfix/RPN notation)");
+                        continue;
+                    }
+                    ":rho" => {
+                        self.current_lang = Language::Rho;
+                        println!("Switched to Rho (infix with tab indentation)");
+                        continue;
+                    }
+                    ":tau" => {
+                        self.current_lang = Language::Tau;
+                        println!("Switched to Tau (network language with futures)");
+                        continue;
+                    }
                     _ => {
                         println!("Unknown command: {}", input);
                         continue;
@@ -418,20 +461,174 @@ impl Repl {
                 continue;
             }
 
-            // Parse and evaluate expressions
-            match self.parse_and_eval(input) {
-                Ok(value) => println!("{:?}", value),
-                Err(e) => println!("Error: {}", e),
+            // Parse and evaluate based on current language
+            match self.current_lang {
+                Language::Pi => {
+                    match self.parse_pi(input) {
+                        Ok(value) => println!("{:?}", value),
+                        Err(e) => println!("Error: {}", e),
+                    }
+                }
+                Language::Rho => {
+                    match self.parse_rho(input) {
+                        Ok(value) => println!("{:?}", value),
+                        Err(e) => println!("Error: {}", e),
+                    }
+                }
+                Language::Tau => {
+                    match self.parse_tau(input) {
+                        Ok(value) => println!("{:?}", value),
+                        Err(e) => println!("Error: {}", e),
+                    }
+                }
             }
         }
     }
 
     fn print_help(&self) {
-        println!("RustAiLang REPL Help:");
-        println!("  Arithmetic: 3 + 4, 10 - 2, 5 * 6, 20 / 4");
-        println!("  Colors: color(255,0,0), blend(...), scale(...)");
+        println!("Multi-Language REPL Help:");
+        println!("\nLanguages:");
+        println!("  :pi  - Switch to Pi (postfix/RPN): 3 4 +");
+        println!("  :rho - Switch to Rho (infix+tabs): 3 + 4");
+        println!("  :tau - Switch to Tau (network+futures): async operations");
+        println!("\nPi (Postfix):");
+        println!("  3 4 +        # 7");
+        println!("  arr = [1,2,3]; arr -->  # prints: 1 2 3");
+        println!("\nRho (Infix):");
+        println!("  3 + 4        # 7");
+        println!("  if a == 1    # uses tabs for blocks");
+        println!("\nTau (Network):");
+        println!("  async fetch  # returns Future");
+        println!("  await val    # resolves Future");
+        println!("\nCommon:");
         println!("  Bash: `ls`, `echo hello`, `pwd`");
-        println!("  Commands: :quit, :help");
+        println!("  Commands: :quit, :help, :pi, :rho, :tau");
+    }
+
+    // Pi language parser (Postfix/RPN notation)
+    fn parse_pi(&mut self, input: &str) -> Result<Value, String> {
+        let tokens: Vec<&str> = input.split_whitespace().collect();
+        let mut stack: Vec<Value> = Vec::new();
+
+        for token in tokens {
+            match token {
+                // Operators
+                "+" => {
+                    if stack.len() < 2 {
+                        return Err("Not enough operands for +".to_string());
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    stack.push(a.add(&b)?);
+                }
+                "-" => {
+                    if stack.len() < 2 {
+                        return Err("Not enough operands for -".to_string());
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    stack.push(a.sub(&b)?);
+                }
+                "*" => {
+                    if stack.len() < 2 {
+                        return Err("Not enough operands for *".to_string());
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    stack.push(a.mul(&b)?);
+                }
+                "/" => {
+                    if stack.len() < 2 {
+                        return Err("Not enough operands for /".to_string());
+                    }
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    stack.push(a.div(&b)?);
+                }
+                "=" => {
+                    // Variable assignment: value name =
+                    if stack.len() < 2 {
+                        return Err("Not enough operands for =".to_string());
+                    }
+                    let name = stack.pop().unwrap();
+                    let value = stack.pop().unwrap();
+                    if let Value::Str(var_name) = name {
+                        self.variables.insert(var_name, value.clone());
+                        stack.push(value);
+                    } else {
+                        return Err("Variable name must be a string".to_string());
+                    }
+                }
+                "-->" => {
+                    // Stack print operation
+                    if stack.is_empty() {
+                        return Err("No value to print".to_string());
+                    }
+                    let val = stack.pop().unwrap();
+                    match val {
+                        Value::Array(ref arr) => {
+                            for item in arr {
+                                print!("{:?} ", item);
+                            }
+                            println!();
+                            stack.push(Value::Unit);
+                        }
+                        _ => stack.push(val),
+                    }
+                }
+                // Try to parse as value or variable
+                _ => {
+                    if let Some(var_val) = self.variables.get(token) {
+                        stack.push(var_val.clone());
+                    } else {
+                        stack.push(self.parse_value(token)?);
+                    }
+                }
+            }
+        }
+
+        if stack.len() == 1 {
+            Ok(stack.pop().unwrap())
+        } else if stack.is_empty() {
+            Ok(Value::Unit)
+        } else {
+            Err(format!("Stack has {} values remaining", stack.len()))
+        }
+    }
+
+    // Rho language parser (Infix with tab indentation)
+    fn parse_rho(&mut self, input: &str) -> Result<Value, String> {
+        // For now, delegate to old infix parser
+        self.parse_and_eval(input)
+    }
+
+    // Tau language parser (Network with futures)
+    fn parse_tau(&mut self, input: &str) -> Result<Value, String> {
+        let input = input.trim();
+
+        // Handle async operations
+        if input.starts_with("async ") {
+            let operation = &input[6..];
+            // Create a pending future
+            return Ok(Value::Future(FutureState::Pending));
+        }
+
+        // Handle await
+        if input.starts_with("await ") {
+            let var_name = input[6..].trim();
+            if let Some(value) = self.variables.get(var_name) {
+                match value {
+                    Value::Future(FutureState::Resolved(v)) => return Ok((**v).clone()),
+                    Value::Future(FutureState::Pending) => return Err("Future still pending".to_string()),
+                    Value::Future(FutureState::Rejected(e)) => return Err(e.clone()),
+                    _ => return Ok(value.clone()),
+                }
+            }
+            return Err(format!("Variable {} not found", var_name));
+        }
+
+        // Default to Rho parsing
+        self.parse_rho(input)
     }
 
     fn process_bash(&self, input: &str) -> Result<String, String> {
