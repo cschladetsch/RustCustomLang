@@ -93,6 +93,24 @@ pub enum Value {
     Continuation(Box<Continuation>),
 }
 
+// Manual PartialEq implementation (Continuation can't be compared)
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Num(a), Value::Num(b)) => (a - b).abs() < f64::EPSILON,
+            (Value::Str(a), Value::Str(b)) => a == b,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Unit, Value::Unit) => true,
+            (Value::Color(a), Value::Color(b)) => a == b,
+            (Value::Array(a), Value::Array(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            (Value::Future(_), Value::Future(_)) => false, // Futures can't be compared
+            (Value::Continuation(_), Value::Continuation(_)) => false, // Continuations can't be compared
+            _ => false,
+        }
+    }
+}
+
 impl Clone for Value {
     fn clone(&self) -> Self {
         match self {

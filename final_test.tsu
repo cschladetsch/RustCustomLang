@@ -1,0 +1,5 @@
+# Final test file for Tau
+# Tests proxy and agent generation
+x = 10
+y = 20
+x + y

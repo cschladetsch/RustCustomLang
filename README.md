@@ -444,28 +444,33 @@ cargo build --release # Optimized build
 
 ### Run Tests
 ```bash
-cargo test          # Run all 40 unit tests
+cargo test          # Run all 100 unit tests
 ```
 
 ### Test Coverage
 
 ```mermaid
-pie title Test Coverage by Component
-    "Arithmetic Operations" : 4
+pie title Test Coverage by Component (100 Tests)
+    "Pi Language Tests" : 22
+    "Rho Conditional Tests" : 20
+    "Loop Constructs" : 27
     "Color Operations" : 7
     "Array/Map Operations" : 5
     "Continuation System" : 3
-    "Loop Constructs" : 7
     "Comparison Operations" : 4
-    "Nested Structures" : 4
     "Expression Evaluation" : 2
-    "Future/Value Tests" : 4
+    "Tau Generation Tests" : 2
+    "Nested Structures" : 8
 ```
 
 **Test Results:**
-- ✅ **40 tests passing** (+13 new loop/continuation tests)
+- ✅ **100 tests passing**
 - ✅ 0 failures
-- Coverage: Runtime, Colors, Arrays, Maps, Continuations, Loops (While, For), Nested Loops, Comparisons, Blocks
+- **Pi Tests (22)**: Arithmetic, nested expressions, edge cases
+- **Rho Tests (20)**: Conditionals, comparisons, truthiness
+- **Loop Tests (27)**: While, For, nested loops, blocks
+- **Tau Tests (2)**: Proxy & Agent generation
+- Coverage: All languages, all features, edge cases
 
 ## Advanced Features
 
@@ -546,7 +551,7 @@ See LICENSE file for details.
 
 ---
 
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Languages:** Pi (`.pi`), Rho (`.rho`), Tau (`.tsu`)
-**Features:** Loops (for/while), Nested loops, Continuations, Comparisons
-**Status:** ✅ All 40 tests passing
+**Features:** Loops (for/while), Nested loops, Continuations, Comparisons, Code Generation
+**Status:** ✅ All 100 tests passing

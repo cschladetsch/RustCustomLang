@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m \"$(cat <<''EOF''\nUpdate README with comprehensive Mermaid diagrams\n\n- Add architecture overview diagram\n- Add language selection flow diagram\n- Add Pi stack execution visualization\n- Add Rho parse tree diagram\n- Add Tau sequence diagram for proxy/agent generation\n- Add value type system class diagram\n- Add color blending visualization\n- Add data flow diagram\n- Add project structure diagram\n- Add continuation system diagram\n- Add future states diagram\n- Add test coverage pie chart\n- Document all 27 passing tests\n- Add use cases and contributing guidelines\n- Total: 12 Mermaid diagrams\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(cargo test)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
