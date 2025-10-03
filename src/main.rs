@@ -82,6 +82,7 @@ impl Color {
 #[derive(Debug)]
 enum Value {
     Num(f64),
+    Str(String),
     Bool(bool),
     Unit,
     Color(Color),
@@ -94,6 +95,7 @@ impl Clone for Value {
     fn clone(&self) -> Self {
         match self {
             Value::Num(n) => Value::Num(*n),
+            Value::Str(s) => Value::Str(s.clone()),
             Value::Bool(b) => Value::Bool(*b),
             Value::Unit => Value::Unit,
             Value::Color(c) => Value::Color(*c),
@@ -178,6 +180,8 @@ enum Expr {
     // Color operations
     Blend(Box<Expr>, Box<Expr>),   // Blend two colors
     Scale(Box<Expr>, f32),          // Scale a color
+    // Array/Map operations
+    Get(Box<Expr>, Box<Expr>),     // Array/Map indexing: arr[index] or map[key]
     // Continuation algebra operations
     Compose(Box<Expr>, Box<Expr>),  // Continuation composition: c1 ; c2
     Choice(Box<Expr>, Box<Expr>),   // Continuation choice: c1 | c2
@@ -290,6 +294,40 @@ impl Runtime {
             Expr::Scale(expr, factor) => {
                 let v = self.eval(*expr)?;
                 v.scale(factor)
+            }
+            Expr::Get(arr_expr, idx_expr) => {
+                let arr = self.eval(*arr_expr)?;
+                let idx = self.eval(*idx_expr)?;
+
+                match arr {
+                    Value::Array(ref vec) => {
+                        match idx {
+                            Value::Num(n) => {
+                                let index = n as usize;
+                                vec.get(index)
+                                    .cloned()
+                                    .ok_or_else(|| format!("Index {} out of bounds", index))
+                            }
+                            _ => Err("Array index must be a number".to_string()),
+                        }
+                    }
+                    Value::Map(ref pairs) => {
+                        // Find matching key in map
+                        for (key, value) in pairs {
+                            // Check for equality
+                            let matches = match (key, &idx) {
+                                (Value::Num(k), Value::Num(i)) => (k - i).abs() < f64::EPSILON,
+                                (Value::Str(k), Value::Str(i)) => k == i,
+                                _ => false,
+                            };
+                            if matches {
+                                return Ok(value.clone());
+                            }
+                        }
+                        Err(format!("Key {:?} not found in map", idx))
+                    }
+                    _ => Err("Get requires an array or map".to_string()),
+                }
             }
             Expr::Compose(left, right) => {
                 // Continuation composition: execute left, then right
@@ -463,6 +501,25 @@ impl Repl {
         // Simple parser for basic expressions
         let input = input.trim();
 
+        // Handle array/map indexing: arr[index] or map["key"]
+        // Only if it doesn't start with '[' (which would be array literal)
+        if !input.starts_with('[') {
+            if let Some(bracket_pos) = input.find('[') {
+                if let Some(close_bracket) = input.rfind(']') {
+                    let arr_part = &input[..bracket_pos];
+                    let idx_part = &input[bracket_pos+1..close_bracket];
+
+                    let arr_val = self.parse_value(arr_part)?;
+                    let idx_val = self.parse_value(idx_part)?;
+
+                    return self.runtime.eval(Expr::Get(
+                        Box::new(Expr::Value(arr_val)),
+                        Box::new(Expr::Value(idx_val))
+                    ));
+                }
+            }
+        }
+
         // Handle color creation: color(r,g,b)
         if input.starts_with("color(") && input.ends_with(')') {
             let args = &input[6..input.len()-1];
@@ -513,6 +570,13 @@ impl Repl {
 
     fn parse_value(&self, input: &str) -> Result<Value, String> {
         let input = input.trim();
+
+        // Try to parse as string (quoted)
+        if (input.starts_with('"') && input.ends_with('"')) ||
+           (input.starts_with('\'') && input.ends_with('\'')) {
+            let s = &input[1..input.len()-1];
+            return Ok(Value::Str(s.to_string()));
+        }
 
         // Try to parse as number (f64)
         if let Ok(n) = input.parse::<f64>() {
@@ -725,6 +789,74 @@ mod tests {
         match map {
             Value::Map(m) if m.len() == 1 => (),
             _ => panic!("Expected map with 1 element"),
+        }
+    }
+
+    // Array get tests
+    #[test]
+    fn test_array_get() {
+        let mut runtime = Runtime::new();
+        let arr = Value::Array(vec![Value::Num(10.0), Value::Num(20.0), Value::Num(30.0)]);
+        let expr = Expr::Get(
+            Box::new(Expr::Value(arr)),
+            Box::new(Expr::Value(Value::Num(1.0)))
+        );
+
+        match runtime.eval(expr) {
+            Ok(Value::Num(n)) if n == 20.0 => (),
+            _ => panic!("Expected Num(20.0)"),
+        }
+    }
+
+    #[test]
+    fn test_array_get_out_of_bounds() {
+        let mut runtime = Runtime::new();
+        let arr = Value::Array(vec![Value::Num(10.0)]);
+        let expr = Expr::Get(
+            Box::new(Expr::Value(arr)),
+            Box::new(Expr::Value(Value::Num(5.0)))
+        );
+
+        match runtime.eval(expr) {
+            Err(_) => (),
+            _ => panic!("Expected error for out of bounds"),
+        }
+    }
+
+    // Map get tests
+    #[test]
+    fn test_map_get_num_key() {
+        let mut runtime = Runtime::new();
+        let map = Value::Map(vec![
+            (Value::Num(1.0), Value::Num(100.0)),
+            (Value::Num(2.0), Value::Num(200.0))
+        ]);
+        let expr = Expr::Get(
+            Box::new(Expr::Value(map)),
+            Box::new(Expr::Value(Value::Num(2.0)))
+        );
+
+        match runtime.eval(expr) {
+            Ok(Value::Num(n)) if n == 200.0 => (),
+            _ => panic!("Expected Num(200.0)"),
+        }
+    }
+
+    #[test]
+    fn test_map_get_str_key() {
+        let mut runtime = Runtime::new();
+        let map = Value::Map(vec![
+            (Value::Str("x".to_string()), Value::Num(100.0)),
+            (Value::Str("y".to_string()), Value::Num(200.0))
+        ]);
+        let expr = Expr::Get(
+            Box::new(Expr::Value(map)),
+            Box::new(Expr::Value(Value::Str("y".to_string())))
+        );
+
+        match runtime.eval(expr) {
+            Ok(Value::Num(n)) if n == 200.0 => (),
+            _ => panic!("Expected Num(200.0)"),
         }
     }
 
