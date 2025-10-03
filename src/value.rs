@@ -166,4 +166,36 @@ impl Value {
             _ => Err(format!("Cannot scale {:?}", self)),
         }
     }
+
+    pub fn less_than(&self, other: &Value) -> Result<Value, String> {
+        match (self, other) {
+            (Value::Num(a), Value::Num(b)) => Ok(Value::Bool(a < b)),
+            _ => Err(format!("Cannot compare {:?} and {:?}", self, other)),
+        }
+    }
+
+    pub fn greater_than(&self, other: &Value) -> Result<Value, String> {
+        match (self, other) {
+            (Value::Num(a), Value::Num(b)) => Ok(Value::Bool(a > b)),
+            _ => Err(format!("Cannot compare {:?} and {:?}", self, other)),
+        }
+    }
+
+    pub fn equals(&self, other: &Value) -> Result<Value, String> {
+        match (self, other) {
+            (Value::Num(a), Value::Num(b)) => Ok(Value::Bool((a - b).abs() < f64::EPSILON)),
+            (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a == b)),
+            (Value::Str(a), Value::Str(b)) => Ok(Value::Bool(a == b)),
+            _ => Ok(Value::Bool(false)),
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Bool(b) => *b,
+            Value::Num(n) => *n != 0.0,
+            Value::Unit => false,
+            _ => true,
+        }
+    }
 }

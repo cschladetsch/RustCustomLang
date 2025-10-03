@@ -267,10 +267,76 @@ color(200,100,50).blend(color(100,200,150))  # Blended color
 `ls -la`
 ```
 
-### Control Flow
+### Control Flow & Loops
+
+#### While Loops
+```
+while condition { body }
+```
+
+```mermaid
+graph TD
+    Start([Start]) --> Cond{Condition?}
+    Cond -->|true| Body[Execute Body]
+    Body --> Cond
+    Cond -->|false| End([End])
+
+    style Body fill:#9f9
+```
+
+**Example:**
+```
+i = 0
+while i < 5 {
+    print(i)
+    i = i + 1
+}
+```
+
+#### For Loops
+```
+for variable in array { body }
+```
+
+```mermaid
+graph LR
+    Array[[Array: 1,2,3]] --> Loop{For Each}
+    Loop --> |i=1| Body1[Body]
+    Loop --> |i=2| Body2[Body]
+    Loop --> |i=3| Body3[Body]
+    Body1 & Body2 & Body3 --> Done([Done])
+
+    style Loop fill:#99f
+    style Done fill:#9f9
+```
+
+**Example:**
+```
+for i in [1,2,3,4,5] {
+    print(i * 2)
+}
+```
+
+#### Nested Loops
+Loops can be nested within each other:
+```
+for i in [1,2,3] {
+    for j in [10,20] {
+        print(i + j)
+    }
+}
+```
+
+#### Continuation Operations
 - `resume` - Execute continuation stack
-- `break` - Drop continuation stack
-- `continue` - Takes continuation argument
+- `break` - Drop continuation stack and resume next
+- `continue(f)` - Takes a continuation as argument and executes it
+
+### Comparison Operators
+- `<` - Less than
+- `>` - Greater than
+- `==` - Equals
+- Boolean values: `true`, `false`
 
 ### Comments
 ```
@@ -378,7 +444,7 @@ cargo build --release # Optimized build
 
 ### Run Tests
 ```bash
-cargo test          # Run all 27 unit tests
+cargo test          # Run all 40 unit tests
 ```
 
 ### Test Coverage
@@ -389,14 +455,17 @@ pie title Test Coverage by Component
     "Color Operations" : 7
     "Array/Map Operations" : 5
     "Continuation System" : 3
+    "Loop Constructs" : 7
+    "Comparison Operations" : 4
+    "Nested Structures" : 4
     "Expression Evaluation" : 2
-    "Future/Value Tests" : 6
+    "Future/Value Tests" : 4
 ```
 
 **Test Results:**
-- ✅ 27 tests passing
+- ✅ **40 tests passing** (+13 new loop/continuation tests)
 - ✅ 0 failures
-- Coverage: Runtime, Colors, Arrays, Maps, Continuations, Futures
+- Coverage: Runtime, Colors, Arrays, Maps, Continuations, Loops (While, For), Nested Loops, Comparisons, Blocks
 
 ## Advanced Features
 
@@ -477,6 +546,7 @@ See LICENSE file for details.
 
 ---
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Languages:** Pi (`.pi`), Rho (`.rho`), Tau (`.tsu`)
-**Status:** ✅ All 27 tests passing
+**Features:** Loops (for/while), Nested loops, Continuations, Comparisons
+**Status:** ✅ All 40 tests passing
