@@ -434,10 +434,19 @@ impl Repl {
     fn parse_tau(&mut self, input: &str) -> Result<Value, String> {
         let input = input.trim();
 
+        // Handle proxy and agent generation from filename
+        if input.starts_with("proxy ") {
+            let filename = input[6..].trim().trim_matches('"').trim_matches('\'');
+            return tau::generate_proxy_wrapper(filename);
+        }
+
+        if input.starts_with("agent ") {
+            let filename = input[6..].trim().trim_matches('"').trim_matches('\'');
+            return tau::generate_agent_wrapper(filename);
+        }
+
         // Handle async operations
         if input.starts_with("async ") {
-            let operation = &input[6..];
-            // Create a pending future
             return Ok(Value::Future(FutureState::Pending));
         }
 

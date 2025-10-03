@@ -2,7 +2,10 @@
 
 A multi-paradigm language system with three dialects:
 
-## File Extension: `.t`
+## File Extensions
+- Pi (postfix): `.pi`
+- Rho (infix): `.rho`
+- Tau (network): `.tsu`
 
 ## The Three Languages
 
@@ -30,6 +33,8 @@ Asynchronous network operations returning futures:
 ```
 async fetch        # Returns Future(Pending)
 await result       # Resolves Future
+proxy "file.t"     # Generates proxy wrapper for file
+agent "file.t"     # Generates autonomous agent for file
 ```
 
 ## Switching Languages
@@ -98,9 +103,11 @@ color(255,0,0) + color(0,255,0)  # Yellow
 - `:rho` - Switch to Rho
 - `:tau` - Switch to Tau
 
-## Running `.t` Files
+## Running Files
 ```bash
-cargo run < program.t
+cargo run < program.pi   # Pi files
+cargo run < program.rho  # Rho files
+cargo run < program.tsu  # Tau files
 ```
 
 ## Example Session
